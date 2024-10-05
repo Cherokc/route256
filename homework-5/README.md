@@ -40,7 +40,34 @@
 
 ### Решение
 ```sql
-/* ЗДЕСЬ ДОЛЖНО БЫТЬ РЕШЕНИЕ */
+with task_logs_with_status_inprogress 
+  as (select at 
+           , task_id
+        from task_logs
+       where status = 3  /* InProgress */
+       order by task_logs.at asc)
+   , task_infos 
+  as (select t.id           as task_id
+           , t.number       as task_number
+           , t.title        as task_title
+           , ts.name        as status_name
+           , cu.email       as author_email
+           , au.email       as assignee_email
+           , t.created_at   as created_at
+           , tl.at          as in_progress_at
+           , t.completed_at as completed_at
+           , to_char((extract(epoch from (t.completed_at - tl.at)) || ' second')::interval, 'DD HH24:MI:SS') as work_duration
+        from tasks as t
+        join users cu on cu.id = t.created_by_user_id
+        join users au on au.id = t.assigned_to_user_id
+        join task_statuses ts on ts.id = t.status
+        join task_logs_with_status_inprogress tl on tl.task_id = t.id
+       where t.completed_at is not null
+         and t.status = 4) /* Done */
+select *
+  from task_infos
+ order by work_duration asc
+ limit 100;
 ```
 
 ## Задание 2: выборка для проверки вложенности
@@ -58,7 +85,27 @@
 
 ### Решение
 ```sql
-/* ЗДЕСЬ ДОЛЖНО БЫТЬ РЕШЕНИЕ */
+with recursive task_hierarchy 
+  as (select t.id
+           , t.title
+           , t.parent_task_id
+           , 1                 as level
+           , concat('/', t.id) as path
+        from tasks t
+       where t.id = :task_id
+      union all
+      select parent.id
+           , parent.title
+           , parent.parent_task_id
+           , th.level + 1                    as level
+           , concat('/', parent.id, th.path) as path
+        from tasks parent
+        join task_hierarchy th on th.parent_task_id = parent.id)
+select th.level             as level
+     , concat('/', th.path) as path
+  from task_hierarchy as th
+ order by level desc
+ limit 1;
 ```
 
 ## Задание 3: самые активные пользователи
@@ -75,7 +122,26 @@
 
 ### Решение
 ```sql
-/* ЗДЕСЬ ДОЛЖНО БЫТЬ РЕШЕНИЕ */
+with task_logs_count 
+  as (select user_id
+           , count(*) as log_count
+        from task_logs
+       group by user_id)
+   , task_comments_count 
+  as (select author_user_id as user_id
+           , count(*)       as comment_count
+        from task_comments
+       group by author_user_id)
+select u.id                       as user_id
+     , u.email                    as email
+     , tlc.log_count + tcc.comment_count as total_events
+  from users as u
+  join task_logs_count as tlc on u.id = tlc.user_id
+  join task_comments_count as tcc on u.id = tcc.user_id
+ where blocked_at is null
+ order by total_events desc
+        , user_id      asc
+ limit 100;
 ```
 
 ## Дополнительное задание: получить переписку по заданию в формате "вопрос-ответ"
