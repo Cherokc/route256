@@ -186,7 +186,58 @@ select u.id                       as user_id
 
 ### Решение
 ```sql
-/* ЗДЕСЬ ДОЛЖНО БЫТЬ РЕШЕНИЕ */
+with newest_tasks_with_discussion
+  as (select distinct t.*
+        from tasks as t
+        join task_comments tc on tc.task_id = t.id
+       where t.assigned_to_user_id is not null
+         and tc.message            is not null
+       order by t.created_at desc
+       limit 5)
+   , comments_of_the_tasks 
+  as (select t.created_by_user_id
+           , t.number
+           , tc.*
+        from newest_tasks_with_discussion as t
+        join task_comments tc on tc.task_id = t.id
+       where t.assigned_to_user_id is not null
+         and tc.message            is not null)
+   , questions 
+  as (select c.number as task_number
+      , u.email       as author_email
+      , c.message     as question
+      , c.at          as asked_at
+      , lead(c.at) over (partition by c.number order by c.at) as next_question_at
+   from comments_of_the_tasks as c
+   join users u on u.id = c.author_user_id
+  where c.created_by_user_id = c.author_user_id
+  order by c.at desc)
+   , answers 
+  as (select c.number  as task_number
+           , u.email   as assignee_email
+           , c.message as answer
+           , c.at      as answered_at
+   from comments_of_the_tasks as c
+   join users u on u.id = c.author_user_id
+   where c.created_by_user_id != c.author_user_id
+   order by c.at desc)
+select coalesce(q.task_number, a.task_number) as task_number
+     , cu.email                               as author_email
+     , q.question
+     , q.asked_at
+     , au.email                               as assignee_email
+     , a.answer
+     , a.answered_at
+  from questions as q
+  full join answers a on a.task_number = q.task_number
+                     and (a.answered_at >= q.asked_at or q.asked_at is null)
+                     and (q.next_question_at is null or a.answered_at < q.next_question_at) 
+  join tasks t on t.number = coalesce(q.task_number, a.task_number)
+  join users cu on cu.id = t.created_by_user_id
+  join users au on au.id = t.assigned_to_user_id
+ order by coalesce(q.task_number, a.task_number) desc
+        , q.asked_at                             asc
+        , a.answered_at                          asc;
 ```
 ### Дедлайны сдачи и проверки задания:
 - 5 октября 23:59 (сдача) / 8 октября, 23:59 (проверка)
