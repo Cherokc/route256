@@ -6,29 +6,23 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Kafka;
+using Microsoft.Extensions.Options;
+using KafkaHomework.OrderEventConsumer.Domain.Order;
 
-namespace KafkaHomework.OrderEventConsumer.Presentation;
+namespace KafkaHomework.OrderEventConsumer.Presentation.Kafka;
 
 public class KafkaBackgroundService : BackgroundService
 {
-    private readonly KafkaAsyncConsumer<Ignore, string> _consumer;
+    private readonly KafkaAsyncConsumer<long, OrderEvent> _consumer;
     private readonly ILogger<KafkaBackgroundService> _logger;
 
-    public KafkaBackgroundService(IServiceProvider serviceProvider, ILogger<KafkaBackgroundService> logger)
+    public KafkaBackgroundService(IServiceProvider serviceProvider,
+                                  ILogger<KafkaBackgroundService> logger)
     {
-        // TODO: IOptions
-        // TODO: KafkaServiceExtensions: services.AddKafkaHandler<TKey, TValue, THandler<TKey, TValue>>(serializers, topic, groupId);
         _logger = logger;
-        var handler = serviceProvider.GetRequiredService<ItemHandler>();
-        _consumer = new KafkaAsyncConsumer<Ignore, string>(
-            handler,
-            "kafka:9092",
-            "group_id",
-            "order_events",
-            null,
-            null,
-            serviceProvider.GetRequiredService<ILogger<KafkaAsyncConsumer<Ignore, string>>>());
+        _consumer = serviceProvider.GetRequiredService<KafkaAsyncConsumer<long, OrderEvent>>();
     }
+
 
     public override Task StopAsync(CancellationToken cancellationToken)
     {

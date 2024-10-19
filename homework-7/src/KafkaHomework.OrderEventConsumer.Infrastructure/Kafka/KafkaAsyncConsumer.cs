@@ -6,13 +6,15 @@ using System.Threading.Tasks;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using KafkaHomework.OrderEventConsumer.Domain.Common;
+using Microsoft.Extensions.Options;
+using Polly;
 
 namespace KafkaHomework.OrderEventConsumer.Infrastructure.Kafka;
 
 public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
 {
-    private const int ChannelCapacity = 10; // TODO: IOptions
-    private readonly TimeSpan _bufferDelay = TimeSpan.FromSeconds(1); // TODO: IOptions
+    private readonly int _channelCapacity;
+    private readonly TimeSpan _bufferDelay;
 
     private readonly Channel<ConsumeResult<TKey, TValue>> _channel;
     private readonly IConsumer<TKey, TValue> _consumer;
@@ -22,18 +24,21 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
 
     public KafkaAsyncConsumer(
         IHandler<TKey, TValue> handler,
-        string bootstrapServers,
-        string groupId,
-        string topic,
+        IOptions<KafkaOptions> options,
         IDeserializer<TKey>? keyDeserializer,
         IDeserializer<TValue>? valueDeserializer,
         ILogger<KafkaAsyncConsumer<TKey, TValue>> logger)
     {
+        var kafkaOptions = options.Value;
+
+        _channelCapacity = kafkaOptions.ChannelCapacity;
+        _bufferDelay = TimeSpan.FromSeconds(kafkaOptions.BufferDelayInSeconds);
+
         var builder = new ConsumerBuilder<TKey, TValue>(
             new ConsumerConfig
             {
-                BootstrapServers = bootstrapServers,
-                GroupId = groupId,
+                BootstrapServers = kafkaOptions.BootstrapServers,
+                GroupId = kafkaOptions.GroupId,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 EnableAutoCommit = true,
                 EnableAutoOffsetStore = false
@@ -53,7 +58,7 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
         _logger = logger;
 
         _channel = Channel.CreateBounded<ConsumeResult<TKey, TValue>>(
-            new BoundedChannelOptions(ChannelCapacity)
+            new BoundedChannelOptions(_channelCapacity)
             {
                 SingleWriter = true,
                 SingleReader = true,
@@ -62,8 +67,9 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
             });
 
         _consumer = builder.Build();
-        _consumer.Subscribe(topic);
+        _consumer.Subscribe(kafkaOptions.Topic);
     }
+
 
     public Task Consume(CancellationToken token)
     {
@@ -77,9 +83,18 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
     {
         await Task.Yield();
 
+        var retryPolicy = Policy
+            .Handle<Exception>() 
+            .WaitAndRetryAsync(3, 
+                attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+                (exception, timeSpan, attempt, context) =>
+                {
+                    _logger.LogWarning($"Retrying due to: {exception.Message}. Waiting {timeSpan} before next attempt.");
+                });
+
         await foreach (var consumeResults in _channel.Reader
                            .ReadAllAsync(token)
-                           .Buffer(ChannelCapacity, _bufferDelay)
+                           .Buffer(_channelCapacity, _bufferDelay)
                            .WithCancellation(token))
         {
             token.ThrowIfCancellationRequested();
@@ -88,12 +103,15 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
             {
                 try
                 {
-                    await _handler.Handle(consumeResults, token);
+                    await retryPolicy.ExecuteAsync(async () =>
+                    {
+                        await _handler.Handle(consumeResults, token);
+                    });
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Unhandled exception occured");
-                    continue; // TODO: Polly.Retry
+                    _logger.LogError(ex, "Unhandled exception occurred after retries.");
+                    break;
                 }
 
                 var partitionLastOffsets = consumeResults
@@ -106,7 +124,7 @@ public sealed class KafkaAsyncConsumer<TKey, TValue> : IDisposable
                     _consumer.StoreOffset(partitionLastOffset);
                 }
 
-                break; // TODO: Polly.Retry
+                break;
             }
         }
     }
