@@ -20,9 +20,9 @@ public sealed class PositionRepository : PgRepository, IPositionRepository
     public async Task<long[]> Add(PositionEntity[] positions, CancellationToken token)
     {
         const string sqlQuery = @"
-    INSERT INTO positions (order_id, item_id, quantity, price_currency, price_amount)
-    VALUES (@OrderId, @ItemId, @Quantity, @PriceCurrency, @PriceAmount)
-    RETURNING id;
+insert into positions (order_id, item_id, quantity, price_currency, price_amount)
+values (@OrderId, @ItemId, @Quantity, @PriceCurrency, @PriceAmount)
+returning id;
     ";
 
         await using var connection = await GetConnection();

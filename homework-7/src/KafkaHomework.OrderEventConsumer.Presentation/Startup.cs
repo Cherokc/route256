@@ -23,7 +23,6 @@ public sealed class Startup
 
     public Startup(IConfiguration configuration) => _configuration = configuration;
 
-    [System.Obsolete]
     public void ConfigureServices(IServiceCollection services)
     {
         services
@@ -36,6 +35,7 @@ public sealed class Startup
         services.AddSingleton<IOrderEventRepository, OrderEventRepository>(_ => new OrderEventRepository(connectionString));
         services.AddSingleton<IPositionRepository, PositionRepository>(_ => new PositionRepository(connectionString));
         services.AddSingleton<IItemInventoryRepository, ItemInventoryRepository>(_ => new ItemInventoryRepository(connectionString));
+        services.AddSingleton<ISalesInventoryRepository, SalesInventoryRepository>(_ => new SalesInventoryRepository(connectionString));
 
         services.Configure<KafkaOptions>(_configuration.GetSection("KafkaConsumerOptions"));
 

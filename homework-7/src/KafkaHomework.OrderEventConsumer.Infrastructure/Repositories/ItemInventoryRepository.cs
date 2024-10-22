@@ -71,7 +71,12 @@ select *
     public async Task<ItemInventoryEntity?> GetLast(long itemId, CancellationToken token)
     {
         const string sqlQuery = @"
-select *
+select ii.id as Id
+     , ii.item_id as ItemId
+     , ii.reserved 
+     , ii.sold 
+     , ii.cancelled 
+     , ii.at as At
   from item_inventories as ii
  where ii.item_id = @ItemId
  order by ii.at desc
