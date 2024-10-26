@@ -11,7 +11,6 @@ using System.Linq;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Mappers;
 using KafkaHomework.OrderEventConsumer.Domain.ValueObjects;
-using System.Runtime.InteropServices;
 
 namespace KafkaHomework.OrderEventConsumer.Presentation.Kafka;
 
@@ -47,13 +46,13 @@ public class ItemHandler : IHandler<long, OrderEvent>
             .Select(m => m.Message.Value)
             .ToArray();
 
-        InsertOrderEvents(orderEvents, token);
-        InsertPositions(orderEvents, token);
-        UpdateItemInvetories(orderEvents, token);
-        UpdateSalesInventories(orderEvents, token);
+        await InsertOrderEvents(orderEvents, token);
+        await InsertPositions(orderEvents, token);
+        await UpdateItemInventories(orderEvents, token);
+        await UpdateSalesInventories(orderEvents, token);
     }
 
-    private async void InsertOrderEvents(OrderEvent[] orderEvents, CancellationToken token)
+    private async Task InsertOrderEvents(OrderEvent[] orderEvents, CancellationToken token)
     {
         var orderEventModels = orderEvents
             .Select(Mapper.ToOrderEventEntity)
@@ -62,7 +61,7 @@ public class ItemHandler : IHandler<long, OrderEvent>
         await _orderEventRepository.Add(orderEventModels, token);
     }
 
-    private async void InsertPositions(OrderEvent[] orderEvents, CancellationToken token)
+    private async Task InsertPositions(OrderEvent[] orderEvents, CancellationToken token)
     {
         var positionModels = orderEvents
             .SelectMany(Mapper.ToPositionEntities)
@@ -71,40 +70,25 @@ public class ItemHandler : IHandler<long, OrderEvent>
         await _positionRepository.Add(positionModels, token);
     }
 
-    private async void UpdateItemInvetories(OrderEvent[] orderEvents, CancellationToken token)
+    private async Task UpdateItemInventories(OrderEvent[] orderEvents, CancellationToken token)
     {
         foreach (var orderEvent in orderEvents)
             foreach (var position in orderEvent.Positions)
             {
-                var itemInventory = await _itemInventoryRepository.GetLast(position.ItemId.Value, token);
-
-                if (itemInventory == null)
-                    itemInventory = new ItemInventoryEntity()
-                    {
-                        ItemId = position.ItemId.Value,
-                        Reserved = 0,
-                        Sold = 0,
-                        Cancelled = 0,
-                        At = orderEvent.Moment
-                    };
-
-                var newReserved = itemInventory.Reserved + orderEvent.Status == Status.Created ? position.Quantity : -position.Quantity;
-                var newSold = itemInventory.Sold + orderEvent.Status == Status.Delivered ? position.Quantity : 0;
-                var newCancelled = itemInventory.Cancelled + orderEvent.Status == Status.Cancelled ? position.Quantity : 0;
-
-                itemInventory = itemInventory with 
+                var itemInventory = new ItemInventoryEntity()
                 {
-                    Reserved = newReserved,
-                    Sold = newSold,
-                    Cancelled = newCancelled,
+                    ItemId = position.ItemId.Value,
+                    Reserved = orderEvent.Status == Status.Created ? position.Quantity : -position.Quantity,
+                    Sold = orderEvent.Status == Status.Delivered ? position.Quantity : 0,
+                    Cancelled = orderEvent.Status == Status.Cancelled ? position.Quantity : 0,
                     At = orderEvent.Moment
                 };
 
-                await _itemInventoryRepository.Add(itemInventory, token);
+                await _itemInventoryRepository.Update(itemInventory, token);
             }
     }
 
-    private async void UpdateSalesInventories(OrderEvent[] orderEvents, CancellationToken token)
+    private async Task UpdateSalesInventories(OrderEvent[] orderEvents, CancellationToken token)
     {
         foreach (var orderEvent in orderEvents)
             foreach (var position in orderEvent.Positions)
@@ -112,33 +96,17 @@ public class ItemHandler : IHandler<long, OrderEvent>
                 var sellerId = position.ItemId.Value / 1_000_000;
                 var itemId = position.ItemId.Value % 1_000_000;
 
-                var salesInventory = await _salesInventoryRepository.GetLast(sellerId, itemId, position.Price.Currency, token);
-
-                if (salesInventory == null)
-                    salesInventory = new SalesInventoryEntity()
+                var salesInventory = new SalesInventoryEntity()
                     {
                         SellerId = sellerId,
                         ItemId = itemId,
                         PriceCurrency = position.Price.Currency,
-                        PriceAmount = 0,
-                        Quantity = 0,
+                        PriceAmount = position.Price.Value,
+                        Quantity = position.Quantity,
                         At = orderEvent.Moment
                     };
 
-                if (salesInventory.PriceCurrency == null)
-                    Console.WriteLine();
-
-                var newAmount = salesInventory.PriceAmount + position.Price.Value;
-                var newQuantity = salesInventory.Quantity + position.Quantity;
-
-                salesInventory = salesInventory with
-                {
-                    PriceAmount = newAmount,
-                    Quantity = newQuantity,
-                    At = orderEvent.Moment
-                };
-
-                await _salesInventoryRepository.Add(salesInventory, token);
+                await _salesInventoryRepository.Update(salesInventory, token);
             }
     }
 }

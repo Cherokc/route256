@@ -1,7 +1,4 @@
-﻿using System;
-using FluentMigrator;
-
-using KafkaHomework.OrderEventConsumer.Infrastructure.Common;
+﻿using FluentMigrator;
 
 namespace Ozon.Route256.Postgres.Persistence.Migrations;
 
@@ -17,7 +14,11 @@ public class SalesInitSchema : Migration
             .WithColumn("quantity").AsInt32().NotNullable()
             .WithColumn("price_currency").AsString().NotNullable()
             .WithColumn("price_amount").AsDecimal().NotNullable()
-            .WithColumn("at").AsDateTimeOffset().NotNullable();
+            .WithColumn("at").AsDateTimeOffset().NotNullable(); 
+        
+        Create.UniqueConstraint("uq_sales_inventories")
+            .OnTable("sales_inventories")
+            .Columns("seller_id", "item_id", "price_currency");
     }
 
     public override void Down()

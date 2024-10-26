@@ -1,5 +1,4 @@
-﻿using KafkaHomework.OrderEventConsumer.Domain.Sales;
-using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
+﻿using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,7 +6,6 @@ namespace KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interface
 
 public interface ISalesInventoryRepository
 {
-    Task<long> Add(SalesInventoryEntity salesInventory, CancellationToken token);
-    Task<SalesInventoryEntity?> GetLast(long sellerId, long itemId, string priceCurrency, CancellationToken token);
+    Task<long> Update(SalesInventoryEntity salesInventory, CancellationToken token);
     Task<SalesInventoryEntity[]> Get(long sellerId, long itemId, CancellationToken token);
 }

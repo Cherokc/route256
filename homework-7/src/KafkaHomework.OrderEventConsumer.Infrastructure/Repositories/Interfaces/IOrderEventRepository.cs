@@ -1,5 +1,4 @@
-﻿using KafkaHomework.OrderEventConsumer.Domain.Order;
-using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
+﻿using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using System.Threading;
 using System.Threading.Tasks;
 

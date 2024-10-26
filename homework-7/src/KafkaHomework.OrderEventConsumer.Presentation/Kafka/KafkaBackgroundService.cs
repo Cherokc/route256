@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Kafka;
-using Microsoft.Extensions.Options;
 using KafkaHomework.OrderEventConsumer.Domain.Order;
 
 namespace KafkaHomework.OrderEventConsumer.Presentation.Kafka;

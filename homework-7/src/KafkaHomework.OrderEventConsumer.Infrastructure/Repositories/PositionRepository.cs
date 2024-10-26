@@ -1,11 +1,7 @@
-﻿using Confluent.Kafka;
-using Dapper;
-using KafkaHomework.OrderEventConsumer.Domain.Sales;
-using KafkaHomework.OrderEventConsumer.Domain.ValueObjects;
+﻿using Dapper;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interfaces;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,7 +27,7 @@ returning id;
 
         foreach (var position in positions)
         {
-            var id = await connection.QueryAsync<long>(
+            var id = await connection.QuerySingleAsync<long>(
                 new CommandDefinition(
                     sqlQuery,
                     new
@@ -44,7 +40,7 @@ returning id;
                     },
                     cancellationToken: token));
 
-            ids.Add(id.Single());
+            ids.Add(id);
         }
 
         return ids.ToArray();

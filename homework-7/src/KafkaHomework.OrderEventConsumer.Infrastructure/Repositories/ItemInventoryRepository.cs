@@ -1,7 +1,4 @@
-﻿using Confluent.Kafka;
-using Dapper;
-using KafkaHomework.OrderEventConsumer.Domain.Sales;
-using KafkaHomework.OrderEventConsumer.Domain.ValueObjects;
+﻿using Dapper;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interfaces;
 using System;
@@ -17,19 +14,21 @@ public sealed class ItemInventoryRepository : PgRepository, IItemInventoryReposi
     {
     }
 
-    public async Task<long> Add(ItemInventoryEntity itemInventory, CancellationToken token)
+    public async Task Update(ItemInventoryEntity itemInventory, CancellationToken token)
     {
         const string sqlQuery = @"
 insert into item_inventories (item_id, reserved, sold, cancelled, at)
 values (@ItemId, @Reserved, @Sold, @Cancelled, @At)
-returning id;
+    on conflict (item_id)
+    do update set
+       reserved = item_inventories.reserved + excluded.reserved
+     , sold = item_inventories.sold + excluded.sold
+     , cancelled = item_inventories.cancelled + excluded.cancelled
+     , at = excluded.at;
 ";
 
-        if (itemInventory.ItemId == 0)
-            Console.WriteLine();
-
         await using var connection = await GetConnection();
-        var ids = await connection.QueryAsync<long>(
+        await connection.QueryAsync<long>(
             new CommandDefinition(
                 sqlQuery,
                 new
@@ -41,21 +40,18 @@ returning id;
                     At = itemInventory.At,
                 },
                 cancellationToken: token));
-
-        return ids.Single();
     }
 
-    public async Task<ItemInventoryEntity[]> Get(long itemId, CancellationToken token)
+    public async Task<ItemInventoryEntity?> Get(long itemId, CancellationToken token)
     {
         const string sqlQuery = @"
 select *
   from item_inventories as ii
  where ii.item_id = @ItemId
- order by ii.at desc
 ";
 
         await using var connection = await GetConnection();
-        var items = await connection.QueryAsync<ItemInventoryEntity>(
+        return await connection.QuerySingleOrDefaultAsync<ItemInventoryEntity>(
             new CommandDefinition(
                 sqlQuery,
                 new
@@ -63,37 +59,5 @@ select *
                     ItemId = itemId
                 },
                 cancellationToken: token));
-
-        return items
-            .ToArray();
-    }
-
-    public async Task<ItemInventoryEntity?> GetLast(long itemId, CancellationToken token)
-    {
-        const string sqlQuery = @"
-select ii.id as Id
-     , ii.item_id as ItemId
-     , ii.reserved 
-     , ii.sold 
-     , ii.cancelled 
-     , ii.at as At
-  from item_inventories as ii
- where ii.item_id = @ItemId
- order by ii.at desc
- limit 1;
-";
-
-        await using var connection = await GetConnection();
-        var items = await connection.QueryAsync<ItemInventoryEntity>(
-            new CommandDefinition(
-                sqlQuery,
-                new
-                {
-                    ItemId = itemId
-                },
-                cancellationToken: token));
-
-        return items
-            .FirstOrDefault();
     }
 }

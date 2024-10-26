@@ -1,7 +1,4 @@
-﻿using System;
-using FluentMigrator;
-
-using KafkaHomework.OrderEventConsumer.Infrastructure.Common;
+﻿using FluentMigrator;
 
 namespace Ozon.Route256.Postgres.Persistence.Migrations;
 
@@ -11,7 +8,7 @@ public class InitSchema : Migration
     public override void Up()
     {
         Create.Table("order_events")
-            .WithColumn("order_id").AsInt64().NotNullable()
+            .WithColumn("order_id").AsInt64()
             .WithColumn("user_id").AsInt64().NotNullable()
             .WithColumn("warehouse_id").AsInt64().NotNullable()
             .WithColumn("status").AsInt32().NotNullable()
@@ -26,8 +23,7 @@ public class InitSchema : Migration
             .WithColumn("price_amount").AsDecimal().NotNullable();
 
         Create.Table("item_inventories")
-            .WithColumn("id").AsInt64().Identity()
-            .WithColumn("item_id").AsInt64().NotNullable()
+            .WithColumn("item_id").AsInt64().PrimaryKey()
             .WithColumn("reserved").AsInt32().NotNullable()
             .WithColumn("sold").AsInt32().NotNullable()
             .WithColumn("cancelled").AsInt32().NotNullable()

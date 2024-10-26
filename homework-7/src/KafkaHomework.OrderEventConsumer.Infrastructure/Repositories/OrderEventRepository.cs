@@ -1,15 +1,8 @@
-﻿using Confluent.Kafka;
-using Dapper;
+﻿using Dapper;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interfaces;
-using KafkaHomework.OrderEventConsumer.Domain.Order;
-using KafkaHomework.OrderEventConsumer.Domain.Sales;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
-using Npgsql;
-using NpgsqlTypes;
-using KafkaHomework.OrderEventConsumer.Domain.ValueObjects;
 
 namespace KafkaHomework.OrderEventConsumer.Infrastructure.Repositories;
 

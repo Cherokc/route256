@@ -2,18 +2,14 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using KafkaHomework.OrderEventConsumer.Infrastructure.Common;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Kafka;
 using KafkaHomework.OrderEventConsumer.Domain.Order;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Kafka.Deserializers;
 using KafkaHomework.OrderEventConsumer.Presentation.Kafka;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interfaces;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories;
-using Ozon.Route256.Postgres.Persistence.Migrations;
 using FluentMigrator.Runner;
 using KafkaHomework.OrderEventConsumer.Infrastructure;
-using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
-using Npgsql;
 
 namespace KafkaHomework.OrderEventConsumer.Presentation;
 

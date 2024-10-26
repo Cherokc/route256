@@ -1,10 +1,6 @@
-﻿using Confluent.Kafka;
-using Dapper;
-using KafkaHomework.OrderEventConsumer.Domain.Sales;
-using KafkaHomework.OrderEventConsumer.Domain.ValueObjects;
+﻿using Dapper;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Models;
 using KafkaHomework.OrderEventConsumer.Infrastructure.Repositories.Interfaces;
-using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,16 +13,21 @@ public sealed class SalesInventoryRepository : PgRepository, ISalesInventoryRepo
     {
     }
 
-    public async Task<long> Add(SalesInventoryEntity salesInventory, CancellationToken token)
+    public async Task<long> Update(SalesInventoryEntity salesInventory, CancellationToken token)
     {
         const string sqlQuery = @"
 insert into sales_inventories (seller_id, item_id, quantity, price_currency, price_amount, at)
 values (@SellerId, @ItemId, @Quantity, @PriceCurrency, @PriceAmount, @At)
+    on conflict (seller_id, item_id, price_currency)
+    do update set
+       quantity = sales_inventories.quantity + excluded.quantity
+     , price_amount = sales_inventories.price_amount + excluded.price_amount
+     , at = excluded.at
 returning id;
 ";
 
         await using var connection = await GetConnection();
-        var ids = await connection.QueryAsync<long>(
+        return await connection.QuerySingleAsync<long>(
             new CommandDefinition(
                 sqlQuery,
                 new
@@ -39,8 +40,6 @@ returning id;
                     At = salesInventory.At,
                 },
                 cancellationToken: token));
-
-        return ids.Single();
     }
 
 
@@ -57,7 +56,7 @@ select si.id as Id
   from sales_inventories as si
  where si.seller_id = @SellerId
    and si.item_id = @ItemId
- order by si.at desc
+ order by si.price_currency desc
 ";
 
         await using var connection = await GetConnection();
@@ -73,39 +72,5 @@ select si.id as Id
 
         return items
             .ToArray();
-    }
-
-    public async Task<SalesInventoryEntity?> GetLast(long sellerId, long itemId, string priceCurrency, CancellationToken token)
-    {
-        const string sqlQuery = @"
-select si.id as Id
-     , si.seller_id as SellerId
-     , si.item_id as ItemId
-     , si.quantity as Quantity
-     , si.price_currency as PriceCurrency
-     , si.price_amount as PriceAmount
-     , si.at as At
-  from sales_inventories as si
- where si.seller_id = @SellerId
-   and si.item_id = @ItemId
-   and si.price_currency = @PriceCurrency
- order by si.at desc
- limit 1;
-";
-
-        await using var connection = await GetConnection();
-        var items = await connection.QueryAsync<SalesInventoryEntity>(
-            new CommandDefinition(
-                sqlQuery,
-                new
-                {
-                    SellerId = sellerId,
-                    ItemId = itemId,
-                    PriceCurrency = priceCurrency,
-                },
-                cancellationToken: token));
-
-        return items
-            .FirstOrDefault();
     }
 }
