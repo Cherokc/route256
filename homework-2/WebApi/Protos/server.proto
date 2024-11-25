@@ -1,0 +1,73 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ProductGrpcService";
+
+import "google/protobuf/timestamp.proto"; 
+
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+  rpc GetProducts(GetProductsRequest) returns (GetProductsResponse);
+  rpc GetProductById(GetProductByIdRequest) returns (GetProductByIdResponse);
+  rpc UpdateProductPrice(UpdateProductPriceRequest) returns (UpdateProductPriceResponse);
+}
+
+enum ProductCategory {
+  PRODUCT_UNSPECIFIED = 0;
+  PRODUCT_GENERAL = 1;
+  PRODUCT_HOUSEHOLD_CHEMICAL = 2;
+  PRODUCT_APPLIANCE = 3;
+  PRODUCT_FOOD = 4;
+}
+
+message CreateProductRequest {
+  string name = 1;
+  double price = 2;
+  double weight = 3;
+  ProductCategory category = 4; 
+  google.protobuf.Timestamp creation_date = 5;
+  int32 warehouse_id = 6;
+}
+
+message CreateProductResponse {
+  string id = 1;
+}
+
+message GetProductsRequest {
+  google.protobuf.Timestamp creation_date = 1;
+  ProductCategory category = 2;
+  int32 warehouse_id = 3;
+  string cursor = 4;
+  int32 page_size = 5;
+}
+
+message GetProductsResponse {
+  repeated Product products = 1;
+  string next_cursor = 2;
+}
+
+message Product {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+  double weight = 4;
+  ProductCategory category = 5; 
+  google.protobuf.Timestamp creation_date = 6;
+  int32 warehouse_id = 7;
+}
+
+message GetProductByIdRequest {
+  string id = 1;
+}
+
+message GetProductByIdResponse {
+  Product product = 1;
+}
+
+message UpdateProductPriceRequest {
+  string id = 1;
+  double new_price = 2;
+}
+
+message UpdateProductPriceResponse {
+  string id = 1;
+}
