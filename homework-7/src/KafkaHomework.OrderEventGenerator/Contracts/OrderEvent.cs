@@ -50,6 +50,6 @@ public sealed class OrderEvent
     {
         Created,
         Delivered,
-        Canceled
+        Cancelled
     }
 }

@@ -70,7 +70,7 @@ internal sealed class OrderEventGenerator
 
                 sentOrderEvent.Status = rnd.NextSingle() < 0.7
                     ? OrderEvent.OrderStatus.Delivered
-                    : OrderEvent.OrderStatus.Canceled;
+                    : OrderEvent.OrderStatus.Cancelled;
 
                 sentOrderEvent.Moment = DateTime.UtcNow - TimeSpan.FromSeconds(eventsCount - events);
 
